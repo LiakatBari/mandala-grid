@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mandala Analytics & 9x9 Command Center</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-primary: #191919;
+      --bg-secondary: #202020;
+      --bg-cell: #262626;
+      --bg-cell-hover: #303030;
+      --bg-done: #182b20;
+      --border-done: #2ea043;
+      --text-primary: #ebebeb;
+      --text-muted: #8b8b8b;
+      --border-color: #333333;
+      --border-subgrid: #4a4a4a;
+      --accent-core: #d9730d;
+      --accent-pillar: #2383e2;
+    }
+
+    body.light {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f7f6f3;
+      --bg-cell: #ffffff;
+      --bg-cell-hover: #f1f1ef;
+      --bg-done: #e6f4ea;
+      --border-done: #34a853;
+      --text-primary: #37352f;
+      --text-muted: #787774;
+      --border-color: #e0e0e0;
+      --border-subgrid: #b5b5b5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1240px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Control Bar */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+    }
+
+    .title-group h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .title-group p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button, select {
+      background: var(--bg-cell);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 6px 11px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    button:hover, select:hover {
+      background: var(--bg-cell-hover);
+    }
+
+    button.active {
+      background: var(--accent-pillar);
+      color: #fff;
+      border-color: var(--accent-pillar);
+    }
+
+    /* Analytics Dashboard */
+    .analytics-panel {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    . analytics-panel.hidden {
+      display: none;
+    }
+
+    .chart-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 250px;
+    }
+
+    .chart-card h3 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      align-self: flex-start;
+    }
+
+    .chart-canvas-wrap {
+      width: 100%;
+      height: 210px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 9x9 Mandala Board */
+    .mandala-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .subgrid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 6px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-subgrid);
+      border-radius: 8px;
+    }
+
+    .subgrid.center-grid {
+      border-color: var(--accent-core);
+    }
+
+    .cell {
+      min-height: 72px;
+      padding: 6px;
+      background: var(--bg-cell);
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
+      font-size: 0.72rem;
+      line-height: 1.25;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      position: relative;
+      word-break: break-word;
+    }
+
+    .cell:hover {
+      background: var(--bg-cell-hover);
+      transform: translateY(-1px);
+    }
+
+    .cell.done {
+      background: var(--bg-done);
+      border-color: var(--border-done);
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .cell.done::after {
+      content: "✓";
+      position: absolute;
+      top: 3px;
+      right: 5px;
+      font-size: 0.7rem;
+      color: var(--border-done);
+      font-weight: bold;
+    }
+
+    .cell.pillar-center {
+      background: rgba(35, 131, 226, 0.16);
+      border-color: var(--accent-pillar);
+      font-weight: 700;
+      cursor: default;
+    }
+
+    .cell.core-center {
+      background: rgba(217, 115, 13, 0.25);
+      border: 2px solid var(--accent-core);
+      font-weight: 800;
+      font-size: 0.76rem;
+      cursor: default;
+    }
+
+    .cell[contenteditable="true"] {
+      outline: 1px dashed var(--accent-pillar);
+      cursor: text;
+      user-select: text;
+    }
+
+    @media (max-width: 960px) {
+      .analytics-panel, .mandala-board {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header & Controls -->
+  <div class="header">
+    <div class="title-group">
+      <h1>🎯 Mandala Analytics Engine: MatSci ➔ Data Engineer</h1>
+      <p id="summaryStats">0 / 64 Actions Completed (0%) • Click any action cell to log growth</p>
+    </div>
+    <div class="controls">
+      <select id="filterSelect">
+        <option value="all">View: Full 9×9 Grid</option>
+        <option value="4">Focus: Core 3×3 Map</option>
+        <option value="0">1. SQL & Modeling</option>
+        <option value="1">2. AWS & DEA-C01</option>
+        <option value="2">3. Python & ETL</option>
+        <option value="3">4. MatSci × Data Edge</option>
+        <option value="5">5. Industrial Portfolio</option>
+        <option value="6">6. DevOps & Linux</option>
+        <option value="7">7. German Market</option>
+        <option value="8">8. Shift-Study Stamina</option>
+      </select>
+      <button id="toggleChartsBtn" class="active">📊 Charts</button>
+      <button id="editBtn">✏️ Edit Cells</button>
+      <button id="exportBtn">⬇️ Backup JSON</button>
+      <button id="importBtn">⬆️ Restore</button>
+      <input type="file" id="importInput" style="display:none" accept=".json" />
+      <button id="themeBtn">☀️ Theme</button>
+    </div>
+  </div>
+
+  <!-- Interactive Growth Charts Panel -->
+  <div class="analytics-panel" id="analyticsPanel">
+    <div class="chart-card">
+      <h3>🕸️ 8-Pillar Balance Radar</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="radarChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>📊 Pillar Completion (%)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>📈 Cumulative Growth Velocity</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9x9 Grid -->
+  <div class="mandala-board" id="board"></div>
+</div>
+
+<script>
+  const PILLAR_LABELS = [
+    "1. SQL & Modeling",
+    "2. AWS & DEA-C01",
+    "3. Python & ETL",
+    "4. MatSci × Data",
+    "CORE",
+    "5. Portfolio",
+    "6. DevOps & Linux",
+    "7. German Market",
+    "8. Stamina"
+  ];
+
+  const DEFAULT_DATA = [
+    ["Window Functions (LAG, LEAD, RANK)", "Recursive CTEs & Complex Joins", "Star & Snowflake Schema Design", "EXPLAIN ANALYZE & Indexing", "1. SQL & DATA MODELING", "Slowly Changing Dimensions (SCD2)", "Table Partitioning & Clustering", "3 Hard SQL Problems / Week", "dbt Core Models & Data Tests"],
+    ["S3 Medallion Lakehouse Design", "AWS Glue (Spark, Catalog, Crawlers)", "Redshift (DistKeys, SortKeys, Spectrum)", "Kinesis Data Streams & Firehose", "2. AWS CLOUD & DEA-C01", "Athena Serverless & Lake Formation", "Step Functions & EventBridge", "IAM Least Privilege, KMS & VPC", ">85% on DEA-C01 Timed Exams"],
+    ["Polars & PyArrow Memory Efficiency", "PySpark DataFrame & Shuffle Tuning", "REST API & MQTT Ingestion Scripts", "Pydantic & Great Expectations QA", "3. PYTHON, ETL & AIRFLOW", "Apache Airflow DAG Scheduling", "Parquet, Avro & Apache Iceberg", "Pytest + Moto (Mock AWS Tests)", "Structured Logging & DLQs"],
+    ["PVD / Sputtering Logs ➔ Time-Series", "Furnace Thermo ➔ IoT Telemetry", "XRD Outputs ➔ Structured Schemas", "Yield & Defect Rates ➔ Data SLAs", "4. DOMAIN EDGE: MATSCI × DATA", "Bridge Shop-Floor OT to Cloud IT", "Align TUBAF Steel Courses w/ Data", "BMS & Battery State Data Concepts", "Pitch: Shop-Floor + Cloud Hybrid"],
+    ["1. SQL & Data Modeling", "2. AWS Cloud & DEA-C01", "3. Python, ETL & Airflow", "4. Domain Edge: MatSci × Data", "🎯 CORE GOAL: DATA ENGINEER (GERMANY)", "5. Industrial Portfolio", "6. DevOps, Linux & Systems", "7. German Market & B1/B2", "8. Shift-Study Stamina"],
+    ["Proj 1: Real-Time Furnace Streaming", "Proj 2: S3 + Glue + dbt Lakehouse", "Proj 3: PVD Anomaly Detection", "System Architecture Diagrams", "5. INDUSTRIAL PORTFOLIO", "Production READMEs (Cost/Tradeoffs)", "Terraform (IaC) Cloud Provisioning", "Executive KPI Dashboard (Gold)", "3-Min Loom Architecture Demo"],
+    ["Docker & Docker Compose Setup", "GitHub Actions CI/CD Pipelines", "Linux CLI, Bash Scripting & SSH", "Poetry / uv Env Management", "6. DEVOPS, LINUX & SYSTEMS", "Clean Git Workflow (Branches, PRs)", "AWS Billing Alarms & Guardrails", "Local vs Cloud Benchmark Testing", "Obsidian Technical Runbooks"],
+    ["A2 ➔ B1/B2 German via Daily Anki", "German Data & Tech Vocabulary", "Apply: Werkstudent / Internships", "2-Page Engineering CV Format", "7. GERMAN MARKET & B1/B2", "LinkedIn & Xing DACH Recruiter SEO", "TUBAF Lab & Alumni Networking", "Target Siemens, Bosch, Infineon", "STAR Stories: 57-Person Plant Ops"],
+    ["Train Commute = Anki & AWS Study", "Protect 7h+ Sleep Post-Shift", "Batch-Cook High-Protein Meals", "90-Min Deep Work (Zero Phone)", "8. SHIFT-STUDY STAMINA", "Sunday Weekly Review & Metrics", "Spaced Repetition (AWS Limits)", "Strict Budget & Exam Fee Fund", "First-Principles Root Debugging"]
+  ];
+
+  const STORAGE_KEY = "liakat_mandala_analytics_v2";
+  let state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
+    cells: DEFAULT_DATA,
+    done: {},
+    history: [{ date: new Date().toISOString().slice(0, 10), count: 0 }],
+    lightMode: false
+  };
+
+  let editMode = false;
+  let radarChart, barChart, lineChart;
+
+  const board = document.getElementById("board");
+  const summaryStats = document.getElementById("summaryStats");
+  const filterSelect = document.getElementById("filterSelect");
+  const toggleChartsBtn = document.getElementById("toggleChartsBtn");
+  const analyticsPanel = document.getElementById("analyticsPanel");
+  const editBtn = document.getElementById("editBtn");
+  const themeBtn = document.getElementById("themeBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const importInput = document.getElementById("importInput");
+
+  if (state.lightMode) document.body.classList.add("light");
+
+  function getPillarStats() {
+    const indices = [0, 1, 2, 3, 5, 6, 7, 8];
+    return indices.map(sgIdx => {
+      let completed = 0;
+      for (let c = 0; c < 9; c++) {
+        if (c !== 4 && state.done[`${sgIdx}-${c}`]) completed++;
+      }
+      return Math.round((completed / 8) * 100);
+    });
+  }
+
+  function recordHistory() {
+    const totalDone = Object.values(state.done).filter(Boolean).length;
+    const today = new Date().toISOString().slice(0, 10);
+    if (!state.history) state.history = [];
+    const lastEntry = state.history[state.history.length - 1];
+    if (lastEntry && lastEntry.date === today) {
+      lastEntry.count = totalDone;
+    } else {
+      state.history.push({ date: today, count: totalDone });
+    }
+  }
+
+  function saveState() {
+    recordHistory();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    updateCharts();
+  }
+
+  function initCharts() {
+    const textColor = state.lightMode ? "#37352f" : "#ebebeb";
+    const gridColor = state.lightMode ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)";
+    const labels = ["SQL", "AWS", "Python", "MatSci", "Portfolio", "DevOps", "German", "Stamina"];
+    const pcts = getPillarStats();
+
+    // 1. Radar Chart
+    radarChart = new Chart(document.getElementById("radarChart"), {
+      type: "radar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Mastery %",
+          data: pcts,
+          backgroundColor: "rgba(35, 131, 226, 0.25)",
+          borderColor: "#2383e2",
+          pointBackgroundColor: "#d9730d",
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0,
+            max: 100,
+            ticks: { display: false, stepSize: 25 },
+            grid: { color: gridColor },
+            angleLines: { color: gridColor },
+            pointLabels: { color: textColor, font: { size: 10, weight: "600" } }
+          }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    // 2. Bar Chart
+    barChart = new Chart(document.getElementById("barChart"), {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: pcts,
+          backgroundColor: [
+            "#2383e2", "#d9730d", "#dfab01", "#2ea043",
+            "#9065b0", "#8b5cf6", "#e03e3e", "#64748b"
+          ],
+          borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { min: 0, max: 100, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+          y: { grid: { display: false }, ticks: { color: textColor, font: { size: 10, weight: "600" } } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    // 3. Cumulative Velocity Line Chart
+    lineChart = new Chart(document.getElementById("lineChart"), {
+      type: "line",
+      data: {
+        labels: state.history.map(h => h.date.slice(5)),
+        datasets: [{
+          label: "Completed Actions",
+          data: state.history.map(h => h.count),
+          borderColor: "#2ea043",
+          backgroundColor: "rgba(46, 160, 67, 0.2)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { min: 0, max: 64, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+          x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  function updateCharts() {
+    const doneCount = Object.values(state.done).filter(Boolean).length;
+    const overallPct = Math.round((doneCount / 64) * 100);
+    summaryStats.textContent = `${doneCount} / 64 Actions Completed (${overallPct}%) • Click any cell to toggle completion`;
+
+    if (!radarChart) return;
+    const pcts = getPillarStats();
+    radarChart.data.datasets[0].data = pcts;
+    radarChart.update();
+
+    barChart.data.datasets[0].data = pcts;
+    barChart.update();
+
+    lineChart.data.labels = state.history.map(h => h.date.slice(5));
+    lineChart.data.datasets[0].data = state.history.map(h => h.count);
+    lineChart.update();
+  }
+
+  function renderBoard() {
+    board.innerHTML = "";
+    const filter = filterSelect.value;
+    board.style.gridTemplateColumns = filter === "all" ? "repeat(3, 1fr)" : "1fr";
+
+    state.cells.forEach((subgrid, sgIdx) => {
+      if (filter !== "all" && String(sgIdx) !== filter) return;
+
+      const sgEl = document.createElement("div");
+      sgEl.className = "subgrid" + (sgIdx === 4 ? " center-grid" : "");
+
+      subgrid.forEach((text, cellIdx) => {
+        const cellEl = document.createElement("div");
+        const key = `${sgIdx}-${cellIdx}`;
+        const isCenterGrid = sgIdx === 4;
+        const isSubgridCenter = cellIdx === 4;
+
+        cellEl.className = "cell";
+        if (isCenterGrid && isSubgridCenter) {
+          cellEl.classList.add("core-center");
+        } else if (isCenterGrid || isSubgridCenter) {
+          cellEl.classList.add("pillar-center");
+        } else if (state.done[key]) {
+          cellEl.classList.add("done");
+        }
+
+        cellEl.textContent = text;
+
+        if (editMode) {
+          cellEl.setAttribute("contenteditable", "true");
+          cellEl.addEventListener("blur", () => {
+            state.cells[sgIdx][cellIdx] = cellEl.textContent.trim();
+            // Sync pillar title to center 3x3 if a subgrid center is edited
+            if (isSubgridCenter && !isCenterGrid) {
+              state.cells[4][sgIdx] = cellEl.textContent.trim();
+            }
+            saveState();
+          });
+        } else if (!isCenterGrid && !isSubgridCenter) {
+          cellEl.addEventListener("click", () => {
+            state.done[key] = !state.done[key];
+            saveState();
+            renderBoard();
+          });
+        }
+
+        sgEl.appendChild(cellEl);
+      });
+
+      board.appendChild(sgEl);
+    });
+
+    updateCharts();
+  }
+
+  toggleChartsBtn.addEventListener("click", () => {
+    const isHidden = analyticsPanel.style.display === "none";
+    analyticsPanel.style.display = isHidden ? "grid" : "none";
+    toggleChartsBtn.classList.toggle("active", isHidden);
+  });
+
+  editBtn.addEventListener("click", () => {
+    editMode = !editMode;
+    editBtn.classList.toggle("active", editMode);
+    editBtn.textContent = editMode ? "💾 Save Edits" : "✏️ Edit Cells";
+    renderBoard();
+  });
+
+  themeBtn.addEventListener("click", () => {
+    state.lightMode = !state.lightMode;
+    document.body.classList.toggle("light", state.lightMode);
+    radarChart.destroy();
+    barChart.destroy();
+    lineChart.destroy();
+    initCharts();
+    saveState();
+  });
+
+  filterSelect.addEventListener("change", renderBoard);
+
+  exportBtn.addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `mandala_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+  });
+
+  importBtn.addEventListener("click", () => importInput.click());
+  importInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        state = JSON.parse(ev.target.result);
+        saveState();
+        renderBoard();
+      } catch (err) {
+        alert("Invalid JSON backup file.");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  initCharts();
+  renderBoard();
+</script>
+</body>
+</html>
